@@ -1,0 +1,24 @@
+﻿
+> interview-prep@0.1.0 lint
+> eslint
+
+
+C:\Users\ASUS\OneDrive\Desktop\prototype\interview-prep\app\interview\[id]\page.tsx
+   12:30  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   13:24  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   35:35  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   57:8   warning  React Hook useEffect has a missing dependency: 'handleUserResponse'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   80:44  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   93:43  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  112:8   warning  React Hook useEffect has a missing dependency: 'handleUserResponse'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  124:15  warning  'handleBlur' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  139:8   warning  React Hook useEffect has a missing dependency: 'endInterview'. Either include it or remove the dependency array        react-hooks/exhaustive-deps
+
+C:\Users\ASUS\OneDrive\Desktop\prototype\interview-prep\app\page.tsx
+  2:22  warning  'CheckCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\ASUS\OneDrive\Desktop\prototype\interview-prep\lib\simulation.ts
+  177:29  warning  'transcript' is defined but never used  @typescript-eslint/no-unused-vars
+
+Γ£û 11 problems (5 errors, 6 warnings)
+

@@ -1,0 +1,27 @@
+# Task: Implement Authentication, Roles & AI
+
+- [x] Authentication Setup <!-- id: 0 -->
+    - [x] Configure Clerk & Env Vars <!-- id: 1 -->
+    - [x] Create Sign In / Sign Up Pages <!-- id: 7 -->
+    - [x] Protect Routes (Middleware) <!-- id: 5 -->
+- [x] Landing Page Update <!-- id: 21 -->
+    - [x] Create "3 Dot" Menu Component (Admin/User) <!-- id: 22 -->
+    - [x] "User" option -> Redirects to `/sign-in` (Existing) <!-- id: 23 -->
+    - [x] "Admin" option -> Redirects to `/admin/dashboard` <!-- id: 24 -->
+- [x] Admin Dashboard <!-- id: 25 -->
+    - [x] Create `/admin/dashboard` page <!-- id: 26 -->
+    - [x] Implement stats fetching (User count, Login activity) <!-- id: 27 -->
+    - [x] Secure Admin Route (Check for specific Admin ID or Email) <!-- id: 28 -->
+- [ ] AI Integration (Gemini) <!-- id: 30 -->
+    - [ ] Install `@google/generative-ai` <!-- id: 31 -->
+    - [ ] Configure `NEXT_PUBLIC_GEMINI_API_KEY` <!-- id: 32 -->
+    - [ ] Create `lib/gemini.ts` for AI logic <!-- id: 33 -->
+    - [ ] Update `interview/setup` to generate questions dynamically <!-- id: 34 -->
+    - [ ] Update `interview/[id]` to evaluate answers dynamically <!-- id: 35 -->
+- [ ] Verification <!-- id: 14 -->
+    - [ ] Verify User Flow <!-- id: 15 -->
+    - [ ] Verify Admin Flow (Access Control) <!-- id: 29 -->
+    - [ ] Verify AI Question Generation <!-- id: 36 -->
+    - [ ] Verify AI Feedback Generation <!-- id: 37 -->
+- [x] Documentation <!-- id: 38 -->
+    - [x] Create Architecture Overview (`architecture.md`) <!-- id: 39 -->

@@ -1,0 +1,63 @@
+﻿
+> interview-prep@0.1.0 lint
+> eslint
+
+
+C:\Users\ASUS\OneDrive\Desktop\prototype\interview-prep\app\dashboard\page.tsx
+  12:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\ASUS\OneDrive\Desktop\prototype\interview-prep\app\dashboard\page.tsx:12:9
+  10 |
+  11 |     useEffect(() => {
+> 12 |         setInterviews(getInterviews());
+     |         ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  13 |     }, []);
+  14 |
+  15 |     // Calculate Stats  react-hooks/set-state-in-effect
+
+C:\Users\ASUS\OneDrive\Desktop\prototype\interview-prep\app\feedback\[id]\page.tsx
+  18:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\ASUS\OneDrive\Desktop\prototype\interview-prep\app\feedback\[id]\page.tsx:18:13
+  16 |         const session = getInterview(interviewId);
+  17 |         if (session) {
+> 18 |             setFeedbackData(session.feedback);
+     |             ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  19 |         } else {
+  20 |             // Fallback / Mock if direct access without interview
+  21 |             setFeedbackData({  react-hooks/set-state-in-effect
+
+C:\Users\ASUS\OneDrive\Desktop\prototype\interview-prep\app\interview\[id]\page.tsx
+   12:30  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   13:24  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   35:35  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   57:8   warning  React Hook useEffect has a missing dependency: 'handleUserResponse'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   80:44  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+   93:43  error    Unexpected any. Specify a different type                                                                               @typescript-eslint/no-explicit-any
+  112:8   warning  React Hook useEffect has a missing dependency: 'handleUserResponse'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  124:15  warning  'handleBlur' is assigned a value but never used                                                                        @typescript-eslint/no-unused-vars
+  139:8   warning  React Hook useEffect has a missing dependency: 'endInterview'. Either include it or remove the dependency array        react-hooks/exhaustive-deps
+
+C:\Users\ASUS\OneDrive\Desktop\prototype\interview-prep\app\interview\setup\page.tsx
+  124:40  error  Parsing error: Identifier expected
+
+C:\Users\ASUS\OneDrive\Desktop\prototype\interview-prep\app\page.tsx
+  2:22  warning  'CheckCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\ASUS\OneDrive\Desktop\prototype\interview-prep\lib\simulation.ts
+  177:29  warning  'transcript' is defined but never used  @typescript-eslint/no-unused-vars
+
+Γ£û 14 problems (8 errors, 6 warnings)
+
