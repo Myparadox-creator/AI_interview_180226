@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import Webcam from "react-webcam";
-import { Mic, Square, Send, Video as VideoIcon, VideoOff, MessageSquare } from "lucide-react";
+import { Mic, Square, Send, Video as VideoIcon, VideoOff, MessageSquare, Loader2 } from "lucide-react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
-import { getAIResponse, getFirstQuestion, calculateFeedback } from "@/lib/simulation";
 import { createInterview } from "@/app/actions";
+import { generateQuestions, evaluateInterview, GeneratedQuestion } from "@/lib/gemini";
 
 // Helper for Speech Recognition type
 interface IWindow extends Window {
@@ -18,7 +18,6 @@ interface IWindow extends Window {
 export default function InterviewRoom() {
     const searchParams = useSearchParams();
     const params = useParams();
-    // const interviewId = params.id as string; // Unused as DB generates new ID
     const router = useRouter();
     const topic = searchParams.get("topic") || "behavioral";
     const totalQuestions = parseInt(searchParams.get("count") || "5");
@@ -26,7 +25,12 @@ export default function InterviewRoom() {
     const [isRecording, setIsRecording] = useState(false);
     const [messages, setMessages] = useState<{ role: "ai" | "user"; text: string }[]>([]);
     const [currentTranscript, setCurrentTranscript] = useState("");
+
+    // AI State
+    const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [questionIndex, setQuestionIndex] = useState(0);
+
     const [isVideoEnabled, setIsVideoEnabled] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -40,32 +44,58 @@ export default function InterviewRoom() {
     const webcamRef = useRef<Webcam>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
+    // Refs to hold latest values — avoids stale closures in callbacks
+    const questionsRef = useRef<GeneratedQuestion[]>([]);
+    const questionIndexRef = useRef(0);
+    const messagesRef = useRef<{ role: "ai" | "user"; text: string }[]>([]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleUserResponseRef = useRef<(text: string) => void>(() => { });
+    const endInterviewRef = useRef<() => void>(() => { });
+
     // Prevent hydration mismatch
     useEffect(() => {
         setIsMounted(true);
     }, []);
 
-    // Initialize Interview
-
+    // Initialize Interview (Generate Questions)
     useEffect(() => {
-        // Initial Greeting
-        const initialQuestion = getFirstQuestion(topic);
-        addMessage("ai", initialQuestion);
-        speak(initialQuestion);
-    }, [topic]);
+        const initInterview = async () => {
+            try {
+                const generated = await generateQuestions(topic, totalQuestions);
+                setQuestions(generated);
+                questionsRef.current = generated; // keep ref in sync
+                setIsLoading(false);
+
+                // Start with first question
+                if (generated.length > 0) {
+                    const firstQ = `Hello! I'm your AI interviewer. We will focus on ${topic} today. Let's begin. ${generated[0].text}`;
+                    addMessage("ai", firstQ);
+                    speak(firstQ);
+                }
+            } catch (err) {
+                console.error("Failed to generate questions:", err);
+                setError("Failed to generate interview questions. Please try again.");
+                setIsLoading(false);
+            }
+        };
+
+        if (topic) {
+            initInterview();
+        }
+    }, [topic, totalQuestions]);
 
     // Timer Logic
     useEffect(() => {
-        if (!isProcessing && timeLeft > 0) {
+        if (!isProcessing && !isLoading && timeLeft > 0) {
             const timer = setInterval(() => {
                 setTimeLeft((prev) => prev - 1);
             }, 1000);
             return () => clearInterval(timer);
-        } else if (timeLeft === 0 && !isProcessing) {
+        } else if (timeLeft === 0 && !isProcessing && !isLoading) {
             handleUserResponse("Time expired. I did not provide an answer.");
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [timeLeft, isProcessing]);
+    }, [timeLeft, isProcessing, isLoading]);
 
     // Reset timer when question changes
     useEffect(() => {
@@ -93,13 +123,14 @@ export default function InterviewRoom() {
                 let interimTranscript = "";
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        handleUserResponse(event.results[i][0].transcript);
+                        // Use ref to avoid stale closure — always calls latest version
+                        handleUserResponseRef.current(event.results[i][0].transcript);
                     } else {
                         interimTranscript += event.results[i][0].transcript;
                     }
                 }
                 setCurrentTranscript(interimTranscript);
-                setError(null); // Clear error on successful result
+                setError(null);
             };
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -107,34 +138,31 @@ export default function InterviewRoom() {
                 console.error("Speech recognition error", event.error);
                 setIsRecording(false);
                 if (event.error === 'network') {
-                    setError("Network error detected. Please check your connection or try typing your response.");
+                    setError("Network error detected. Please check connection.");
                 } else if (event.error === 'not-allowed') {
-                    setError("Microphone access denied. Please allow permission.");
+                    setError("Microphone access denied.");
                 } else if (event.error === 'no-speech') {
-                    // Ignore no-speech errors, just stop recording or let it continue
                     return;
-                } else {
-                    setError(`Speech recognition error: ${event.error}`);
                 }
             };
 
             recognitionRef.current = recognition;
         } else {
-            setError("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
+            setError("Speech recognition is not supported in this browser. Please use Chrome/Edge.");
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-
-
     const addMessage = (role: "ai" | "user", text: string) => {
-        setMessages((prev) => [...prev, { role, text }]);
+        const newMsg = { role, text };
+        messagesRef.current = [...messagesRef.current, newMsg];
+        setMessages((prev) => [...prev, newMsg]);
     };
 
     const speak = (text: string) => {
         if (!isMounted) return;
         if ("speechSynthesis" in window) {
-            window.speechSynthesis.cancel(); // Stop previous
+            window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1.0;
             utterance.pitch = 1.0;
@@ -146,7 +174,6 @@ export default function InterviewRoom() {
         if (isRecording) {
             recognitionRef.current?.stop();
             setIsRecording(false);
-            // If there is transcript that wasn't final, send it
             if (currentTranscript.trim()) {
                 handleUserResponse(currentTranscript);
                 setCurrentTranscript("");
@@ -157,10 +184,9 @@ export default function InterviewRoom() {
         }
     };
 
-    const handleUserResponse = async (text: string) => {
+    const handleUserResponse = (text: string) => {
         if (!text.trim()) return;
 
-        // Stop recording while processing
         if (isRecording) {
             recognitionRef.current?.stop();
             setIsRecording(false);
@@ -169,70 +195,124 @@ export default function InterviewRoom() {
         addMessage("user", text);
         setIsProcessing(true);
 
-        // Get AI Response
-        try {
-            const response = await getAIResponse(text, topic, questionIndex, totalQuestions);
-            setQuestionIndex((prev) => prev + 1);
+        // Read from refs so setTimeout always has fresh values (no stale closure)
+        const currentIndex = questionIndexRef.current;
+        const currentQuestions = questionsRef.current;
+        const nextIndex = currentIndex + 1;
 
-            addMessage("ai", response);
-            speak(response);
+        // Simulate "Thinking" time and move to next question
+        setTimeout(() => {
+            questionIndexRef.current = nextIndex;
+            setQuestionIndex(nextIndex);
 
-            if (response.includes("interview is now complete")) {
-                // Handle end of interview logic if needed
+            if (nextIndex < currentQuestions.length) {
+                const nextQuestion = currentQuestions[nextIndex].text;
+                const filler = ["Thank you.", "Noted.", "Interesting.", "Okay."][Math.floor(Math.random() * 4)];
+                const fullResponse = `${filler} ${nextQuestion}`;
+
+                addMessage("ai", fullResponse);
+                speak(fullResponse);
+            } else {
+                const endMsg = "Thank you for your responses. The interview is now complete. I am generating your feedback now...";
+                addMessage("ai", endMsg);
+                speak(endMsg);
+                setTimeout(() => endInterviewRef.current(), 3000);
             }
+            setIsProcessing(false);
+        }, 1500);
+    };
 
-        } catch (error) {
-            console.error("Error getting AI response:", error);
-        } finally {
+    // Keep refs up-to-date every render so callbacks always call the latest version
+    handleUserResponseRef.current = handleUserResponse;
+
+    const endInterview = async () => {
+        window.speechSynthesis.cancel();
+        setIsProcessing(true);
+
+        // Read from ref to get the latest messages (avoids stale closure)
+        const latestMessages = messagesRef.current;
+        const transcriptPairs: { question: string; answer: string }[] = [];
+        let currentQ = "";
+        let isFirstAiMessage = true;
+
+        latestMessages.forEach(msg => {
+            if (msg.role === 'ai') {
+                let questionText = msg.text;
+
+                if (isFirstAiMessage) {
+                    // First message has greeting prefix — extract just the question part
+                    // Format: "Hello! I'm your AI interviewer. We will focus on X today. Let's begin. <QUESTION>"
+                    const beginMarker = "Let's begin. ";
+                    const markerIdx = questionText.indexOf(beginMarker);
+                    if (markerIdx !== -1) {
+                        questionText = questionText.substring(markerIdx + beginMarker.length).trim();
+                    }
+                    isFirstAiMessage = false;
+                } else {
+                    // Subsequent messages have filler prefix — strip it
+                    const fillers = ["Thank you. ", "Noted. ", "Interesting. ", "Okay. "];
+                    for (const filler of fillers) {
+                        if (questionText.startsWith(filler)) {
+                            questionText = questionText.substring(filler.length).trim();
+                            break;
+                        }
+                    }
+                }
+
+                currentQ = questionText;
+            } else if (msg.role === 'user' && currentQ) {
+                transcriptPairs.push({ question: currentQ, answer: msg.text });
+                currentQ = "";
+            }
+        });
+
+        console.log("Evaluating pairs:", transcriptPairs);
+
+        try {
+            const feedback = await evaluateInterview(transcriptPairs, topic);
+            const result = await createInterview({
+                date: new Date().toISOString(),
+                topic: topic,
+                feedback: feedback
+            });
+
+            if (result.success) {
+                router.push(`/feedback/${result.id}`);
+            } else {
+                setError("Failed to save interview: " + result.error);
+                setIsProcessing(false);
+            }
+        } catch (err) {
+            console.error("Evaluation error:", err);
+            setError("Failed to generate feedback. Please try again.");
             setIsProcessing(false);
         }
     };
 
-    const endInterview = () => {
-        window.speechSynthesis.cancel();
-        recognitionRef.current?.stop();
+    // Keep endInterviewRef up-to-date so setTimeout always calls the latest version
+    endInterviewRef.current = endInterview;
 
-        // Calculate and Save Feedback
-        console.log("Ending interview. Transcripts:", messages);
-        const feedback = calculateFeedback(messages, topic);
-        console.log("Calculated feedback:", feedback);
-
-        // We can't await in a sync function, so we treat it as a promise or make endInterview async
-        createInterview({
-            date: new Date().toISOString(),
-            topic: topic,
-            feedback: feedback
-        }).then((result) => {
-            if (result.success) {
-                router.push(`/feedback/${result.id}`);
-            } else {
-                console.error("Failed to save interview:", result.error);
-                alert("Failed to save interview result. " + result.error);
-            }
-        });
-    };
-
-    // Keep latest endInterview in a ref to avoid stale closures in event listeners
-    const endInterviewRef = useRef(endInterview);
-    useEffect(() => {
-        endInterviewRef.current = endInterview;
-    });
-
-    // Anti-Cheating: Tab Switch / Visibility Change Detection
+    // Anti-Cheating: end interview if user switches tabs
     useEffect(() => {
         const handleVisibilityChange = () => {
-            if (document.hidden) {
-                alert("Cheating detected! You switched tabs. The interview will end now.");
+            if (document.hidden && !isLoading && messagesRef.current.length > 0) {
+                console.warn("User switched tabs — ending interview");
                 endInterviewRef.current();
             }
         };
-
         document.addEventListener("visibilitychange", handleVisibilityChange);
-        return () => {
-            document.removeEventListener("visibilitychange", handleVisibilityChange);
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    }, [isLoading]);
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
+                <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
+                <h2 className="text-xl font-semibold">Generating Your Interview...</h2>
+                <p className="text-gray-400">Preparing questions for {topic}...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-900 text-white flex flex-col md:flex-row h-screen overflow-hidden">
@@ -240,8 +320,8 @@ export default function InterviewRoom() {
             <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
                 <div className="absolute top-6 left-6 z-10 bg-black/50 px-4 py-2 rounded-lg backdrop-blur-sm flex items-center gap-4">
                     <div>
-                        <h2 className="font-semibold text-lg text-white/90">
-                            {topic === 'behavioral' ? 'Behavioral Interview' : 'Technical Interview'}
+                        <h2 className="font-semibold text-lg text-white/90 capitalize">
+                            {topic.replace(/_/g, " ")} Interview
                         </h2>
                         <span className="text-sm text-gray-400">Question {Math.min(questionIndex + 1, totalQuestions)} of {totalQuestions}</span>
                     </div>
@@ -257,7 +337,7 @@ export default function InterviewRoom() {
                 )}
 
                 <div className="relative w-full max-w-4xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-gray-800">
-                    {/* Hydration safe Webcam */}
+                    {/* Webcam */}
                     {isMounted && isVideoEnabled ? (
                         <Webcam
                             ref={webcamRef}
@@ -271,7 +351,7 @@ export default function InterviewRoom() {
                         </div>
                     )}
 
-                    {/* AI Overlay / Avatar Placeholder */}
+                    {/* AI Avatar */}
                     <div className="absolute top-4 right-4 w-32 h-40 bg-gray-800 rounded-lg border border-gray-700 flex items-center justify-center shadow-lg">
                         <div className="text-center">
                             <div className="w-12 h-12 bg-blue-600 rounded-full mx-auto mb-2 flex items-center justify-center">
@@ -289,7 +369,7 @@ export default function InterviewRoom() {
                     {/* Transcript Overlay */}
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-8 pt-20">
                         <p className="text-xl font-medium text-white/90 text-center transition-all duration-300">
-                            {currentTranscript || (isRecording ? "Listening..." : "Microphone is off")}
+                            {currentTranscript || (isProcessing ? "Processing..." : isRecording ? "Listening..." : "Microphone is off")}
                         </p>
                     </div>
                 </div>
@@ -298,24 +378,24 @@ export default function InterviewRoom() {
                 <div className="mt-8 flex items-center gap-6">
                     <button
                         onClick={() => setIsVideoEnabled(!isVideoEnabled)}
-                        className={`p-4 rounded-full transition-colors ${isVideoEnabled ? "bg-gray-800 hover:bg-gray-700 text-white" : "bg-red-500/20 text-red-500 hover:bg-red-500/30"
-                            }`}
+                        className={`p-4 rounded-full transition-colors ${isVideoEnabled ? "bg-gray-800 hover:bg-gray-700 text-white" : "bg-red-500/20 text-red-500 hover:bg-red-500/30"}`}
                     >
                         {isVideoEnabled ? <VideoIcon className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
                     </button>
 
                     <button
                         onClick={toggleRecording}
+                        disabled={isProcessing}
                         className={`p-6 rounded-full transition-all transform hover:scale-105 shadow-xl ${isRecording
                             ? "bg-red-500 hover:bg-red-600 animate-pulse ring-4 ring-red-500/30"
                             : "bg-blue-600 hover:bg-blue-700 ring-4 ring-blue-600/30"
-                            }`}
+                            } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                         {isRecording ? <Square className="w-8 h-8 fill-current" /> : <Mic className="w-8 h-8" />}
                     </button>
 
                     <button
-                        onClick={endInterview}
+                        onClick={() => endInterview()}
                         className="p-4 rounded-full bg-gray-800 hover:bg-red-900/50 hover:text-red-400 text-gray-400 transition-colors"
                     >
                         <span className="font-bold text-sm">END</span>
@@ -350,8 +430,9 @@ export default function InterviewRoom() {
                     <div className="relative">
                         <input
                             type="text"
-                            placeholder="Type your answer if mic fails..."
-                            className="w-full pl-4 pr-12 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder:text-gray-400"
+                            placeholder={isProcessing ? "Please wait..." : "Type your answer..."}
+                            disabled={isProcessing}
+                            className="w-full pl-4 pr-12 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder:text-gray-400 disabled:opacity-50"
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                     handleUserResponse(e.currentTarget.value);
@@ -359,7 +440,7 @@ export default function InterviewRoom() {
                                 }
                             }}
                         />
-                        <button className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 p-1 hover:bg-blue-50 rounded-lg">
+                        <button className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 p-1 hover:bg-blue-50 rounded-lg" disabled={isProcessing}>
                             <Send className="w-5 h-5" />
                         </button>
                     </div>
