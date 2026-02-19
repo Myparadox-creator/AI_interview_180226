@@ -29,7 +29,8 @@ This project is an AI-powered application designed to assist users in preparing 
    ```
 
 ## Usage
-- After starting the application, create an account or log in.
+- After starting the application, access it locally at [http://localhost:3000](http://localhost:3000)
+- Create an account or log in.
 - Choose a mock interview setting and start practicing.
 - Review your feedback post-interview and utilize the resource library for further learning.
 
