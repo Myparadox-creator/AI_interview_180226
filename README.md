@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Interview Preparation Application
 
-## Getting Started
+## Project Description
+This project is an AI-powered application designed to assist users in preparing for interviews. The application leverages artificial intelligence to simulate interview scenarios, provide feedback, and offer resources to help users enhance their interview skills.
 
-First, run the development server:
+## Features
+- **Mock Interviews**: Users can practice interviews in various fields with AI-generated questions.
+- **Feedback Mechanism**: After each mock interview, users receive constructive feedback on their responses.
+- **Resource Library**: A collection of articles, videos, and tips to improve interview skills.
+- **Performance Tracking**: Users can track their performance over time and identify areas for improvement.
+- **User-Friendly Interface**: Designed with ease of use in mind, allowing users to focus on their interview preparation.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Setup Instructions
+1. **Clone the repository**: 
+   ```bash
+   git clone https://github.com/Myparadox-creator/AI_interview_180226.git
+   ```
+2. **Navigate to the project directory**: 
+   ```bash
+   cd AI_interview_180226
+   ```
+3. **Install dependencies**: 
+   ```bash
+   npm install
+   ```
+4. **Start the application**: 
+   ```bash
+   npm start
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Usage
+- After starting the application, create an account or log in.
+- Choose a mock interview setting and start practicing.
+- Review your feedback post-interview and utilize the resource library for further learning.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For more detailed information, refer to the documentation or reach out to the support team.
