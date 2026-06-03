@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
+
+# dev-only test scripts
+test-db*.ts
+
+# lint logs
+lint_log*.txt
