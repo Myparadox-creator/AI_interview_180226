@@ -4,6 +4,8 @@ import { getInterviews } from "@/app/actions";
 import { UserButton } from "@clerk/nextjs";
 import { MessageSquare } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
 export default async function Dashboard() {
     const interviews = await getInterviews();
 
